@@ -1,6 +1,6 @@
 /* JARIN assistant widget — same tokens as the site */
-.jc{--ink:#0B0908;--char:#141110;--char-2:#1C1714;--rule:#2C231E;--cream:#F4EBE2;--smoke:#A39588;--cu:#E8A272;--cu-deep:#B86B3C;--cu-ink:#1A0F07;font-family:"Instrument Sans",system-ui,sans-serif}
-.jc-launch{position:fixed;right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:60;display:inline-flex;align-items:center;gap:10px;border:0;border-radius:999px;padding:14px 20px 14px 16px;background:var(--cu);color:var(--cu-ink);font:700 15px/1 "Instrument Sans",system-ui,sans-serif;cursor:pointer;box-shadow:0 18px 40px -14px rgba(0,0,0,.8),0 0 0 6px rgba(232,162,114,.12)}
+.jc{--ink:#0B0908;--char:#141110;--char-2:#1C1714;--rule:#2C231E;--cream:#F4EBE2;--smoke:#A39588;--cu-ink:#1A0F07;font-family:"Instrument Sans",system-ui,sans-serif}
+.jc-launch{position:fixed;right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:60;display:inline-flex;align-items:center;gap:10px;border:0;border-radius:999px;padding:14px 20px 14px 16px;background:var(--cu);color:var(--cu-ink);font:700 15px/1 "Instrument Sans",system-ui,sans-serif;cursor:pointer;box-shadow:0 18px 40px -14px rgba(0,0,0,.8),0 0 0 6px color-mix(in srgb,var(--cu) 12%,transparent)}
 .jc-launch svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .jc-launch:hover{background:#F2B58A}
 .jc.on .jc-launch span{display:none}

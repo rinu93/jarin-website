@@ -3,6 +3,8 @@ import { SITE, DAYS, openStatus, fmtTime, waNumber, telNumber } from './site-con
 import { MARK, BRAND } from './brand.js';
 import { supabase, configured } from './supabase.js';
 import { mountChat, openChat } from './chat.js';
+import { mountPlayer } from './player.js';
+import { preloader, marquee as marqueeFx, scrollFx, pointerFx } from './fx.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => (SITE.currency || '₹') + Number(n).toLocaleString('en-IN');
@@ -54,7 +56,7 @@ function rack() {
   const plate = ([x, y, w, h, c], dir) => `<g class="plate ${c}" style="--from:${dir * 140}px"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#cu)"/><rect x="${x + 5}" y="${y + 12}" width="4" height="${h - 24}" rx="2" fill="#FFE3CC" opacity=".35"/></g>`;
   return `<div class="rack" aria-hidden="true"><svg viewBox="0 0 1200 260" preserveAspectRatio="xMidYMid meet">
     <defs>
-      <linearGradient id="cu" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F7C6A0"/><stop offset=".5" stop-color="#E29A66"/><stop offset="1" stop-color="#8E4E2B"/></linearGradient>
+      <linearGradient id="cu" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--cu-hi)"/><stop offset=".5" style="stop-color:var(--cu)"/><stop offset="1" style="stop-color:var(--cu-deep)"/></linearGradient>
       <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4E4038"/><stop offset=".5" stop-color="#C9A58A"/><stop offset="1" stop-color="#2E2520"/></linearGradient>
       <radialGradient id="floor" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#000" stop-opacity=".7"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
     </defs>
@@ -222,9 +224,19 @@ const footer = () => `<footer><div class="wrap">
   <div class="legal"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><span>${esc(SITE.addressLines.join(', '))}</span></div>
 </div></footer>`;
 
+function marquee() {
+  const words = ['Strength', '2,000 sq ft', 'Cardio', 'Air-conditioned', 'HIIT', 'Personal training', 'Digital gym', 'Thuckalay'];
+  const set = words.map(w => `<span>${esc(w)}</span><i></i>`).join('');
+  const alt = ['Glow up', 'Lift up', 'Level up', 'Free trial', 'Certified coaches'].map(w => `<span>${esc(w)}</span><i></i>`).join('');
+  return `<div class="mq" aria-hidden="true"><div class="mq-row"><div>${set}</div><div>${set}</div></div><div class="mq-row out"><div>${alt}${alt}</div><div>${alt}${alt}</div></div></div>`;
+}
+
 /* ---------------- render ---------------- */
-document.getElementById('app').innerHTML = header() + '<main>' + hero() + digital() + trial() + training() + equipment() + plans() + offers() + visit() + '</main>' + footer();
+preloader();
+mountPlayer();
+document.getElementById('app').innerHTML = header() + '<main>' + hero() + marquee() + digital() + trial() + training() + equipment() + plans() + offers() + visit() + '</main>' + footer();
 mountChat();
+marqueeFx(); scrollFx(); pointerFx();
 
 const top = document.getElementById('top');
 const onScroll = () => top.classList.toggle('solid', window.scrollY > 10);
