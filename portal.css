@@ -297,3 +297,18 @@ th{text-transform:none;letter-spacing:0;font-size:12.5px}
 nav.views a{border-radius:10px}
 .auth-card{border-radius:24px}
 .brand .wordmark b{font-weight:900;letter-spacing:.1em}
+
+/* ---------- animated top-left logo: the two half-barbells do a slow "rep" ---------- */
+.logo .mark,.brand .mark{overflow:visible}
+.logo .mark .m1,.logo .mark .m2,.brand .mark .m1,.brand .mark .m2{transform-box:view-box;transform-origin:center}
+@media (prefers-reduced-motion:no-preference){
+  .logo .mark .m1,.brand .mark .m1{animation:jfs-rep-a 4.8s cubic-bezier(.45,0,.25,1) infinite}
+  .logo .mark .m2,.brand .mark .m2{animation:jfs-rep-b 4.8s cubic-bezier(.45,0,.25,1) infinite}
+  .logo .mark,.brand .mark{animation:jfs-glow 4.8s ease-in-out infinite}
+  .logo:hover .mark .m1,.brand:hover .mark .m1{animation-duration:1.2s}
+  .logo:hover .mark .m2,.brand:hover .mark .m2{animation-duration:1.2s}
+  .logo:hover .mark,.brand:hover .mark{animation-duration:1.2s}
+}
+@keyframes jfs-rep-a{0%,55%,100%{transform:none}70%{transform:translate(14px,-26px)}80%{transform:translate(14px,-26px)}}
+@keyframes jfs-rep-b{0%,55%,100%{transform:none}70%{transform:translate(-14px,26px)}80%{transform:translate(-14px,26px)}}
+@keyframes jfs-glow{0%,55%,100%{filter:none}72%{filter:drop-shadow(0 0 6px rgba(232,162,114,.75))}}

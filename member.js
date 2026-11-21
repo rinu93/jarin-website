@@ -1,5 +1,6 @@
 import './portal.css';
 import { logoUrl, BRAND, MARK, TAGLINE } from './brand.js';
+import { invoiceData, invoiceHtml, INVOICE_CSS, printInvoice } from './invoice.js';
 import { supabase, configured } from './supabase.js';
 import { SITE, DAYS, openStatus, fmtTime } from './site-config.js';
 import { esc, parse, today, addDays, addMonths, diffDays, mKey, curMonth, shiftMonth, fmtDate, fmtShort, fmtMonth, lineChart } from './lib.js';
@@ -29,9 +30,9 @@ function authCard(inner) {
 function renderLogin(mode = 'signin', msg = '') {
   const signup = mode === 'signup', forgot = mode === 'forgot';
   authCard(`<h2>${signup ? 'Create your member login' : forgot ? 'Reset your password' : 'Member sign in'}</h2>
-  ${signup ? '<p class="meta" style="margin:0">Use the <b>same email you gave at the front desk</b>. After confirming it, you\'ll link your login with your Membership ID.</p>' : ''}
+  ${signup ? '<p class="meta" style="margin:0">Already a member? Use the <b>same email you gave at the front desk</b> and we\'ll find your membership. New here? You get your Membership ID as soon as you confirm your email.</p>' : ''}
   <form id="authForm" class="form" data-mode="${mode}">
-    ${signup ? `<label for="a_name">Full name<input id="a_name" name="name" required autocomplete="name"></label>` : ''}
+    ${signup ? `<label for="a_name">Full name<input id="a_name" name="name" required autocomplete="name"></label><label for="a_phone">Phone<input id="a_phone" name="phone" type="tel" required autocomplete="tel" placeholder="+91"></label>` : ''}
     <label for="a_email">Email<input id="a_email" name="email" type="email" required autocomplete="email"></label>
     ${forgot ? '' : `<label for="a_pw">Password<input id="a_pw" name="password" type="password" required minlength="8" autocomplete="${signup ? 'new-password' : 'current-password'}">${signup ? '<span class="hint">At least 8 characters</span>' : ''}</label>`}
     <div id="authMsg">${msg}</div>
@@ -43,8 +44,8 @@ function renderLogin(mode = 'signin', msg = '') {
 }
 function renderLink(msg = '') {
   authCard(`<h2>Link your membership</h2>
-  <p class="meta" style="margin:0">Enter the Membership ID on your receipt or ask the front desk (for example <span class="mid">JFS-0042</span>). Your login email <b>${esc(me.email)}</b> must match the email on your membership.</p>
-  <form id="linkForm" class="form"><label for="l_code">Membership ID<input id="l_code" name="code" required autocomplete="off" placeholder="JFS-0000" style="text-transform:uppercase;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em"></label>
+  <p class="meta" style="margin:0">Enter the Membership ID on your receipt or ask the front desk (for example <span class="mid">JFS-M-0042</span>). Your login email <b>${esc(me.email)}</b> must match the email on your membership.</p>
+  <form id="linkForm" class="form"><label for="l_code">Membership ID<input id="l_code" name="code" required autocomplete="off" placeholder="JFS-M-0000" style="text-transform:uppercase;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em"></label>
   <div id="authMsg">${msg}</div><button class="btn primary" type="submit">Link my membership</button></form>
   <div class="actions"><button class="btn sm" data-act="signOut">Sign out</button></div>`);
 }
@@ -84,6 +85,7 @@ async function loadData() {
 function status(m) {
   const left = m.expiry_date ? diffDays(m.expiry_date, today()) : -9999;
   if (m.frozen) return { label: 'Frozen', cls: 'neutral', left };
+  if (!m.expiry_date) return { label: 'No plan yet', cls: 'neutral', left: 9999, none: true };
   if (left < 0) return { label: `Expired ${-left} day${left === -1 ? '' : 's'} ago`, cls: 'bad', left };
   if (left <= 7) return { label: left === 0 ? 'Expires today' : `${left} day${left === 1 ? '' : 's'} left`, cls: 'warn', left };
   return { label: 'Active', cls: 'good', left };
@@ -139,7 +141,7 @@ function renderDashboard() {
         <div class="mcard-foot">JARIN FITNESS STUDIO · show this at the front desk</div>
       </div>
       <section class="panel mp-ring">${ring(st.left, total)}
-        ${st.left <= 15 ? `<div class="meta" style="text-align:center">${st.left < 0 ? 'Your membership has ended.' : 'Your membership ends soon.'} Renew to keep your streak going.</div><div class="actions" style="justify-content:center">${wa ? `<a class="btn primary" href="${wa}" target="_blank" rel="noopener">Renew on WhatsApp</a>` : ''}<span class="meta" style="user-select:all">${esc(SITE.phone)}</span></div>` : `<div class="meta" style="text-align:center">Renews on ${esc(fmtDate(addDays(m.expiry_date, 1)))}</div>`}
+        ${st.none ? `<div class="meta" style="text-align:center">Your Membership ID is ready. Pick a plan at the front desk or on WhatsApp to start training.</div><div class="actions" style="justify-content:center">${wa ? `<a class="btn primary" href="${wa}" target="_blank" rel="noopener">Start on WhatsApp</a>` : ''}<a class="btn" href="/#plans">See plans</a></div>` : st.left <= 15 ? `<div class="meta" style="text-align:center">${st.left < 0 ? 'Your membership has ended.' : 'Your membership ends soon.'} Renew to keep your streak going.</div><div class="actions" style="justify-content:center">${wa ? `<a class="btn primary" href="${wa}" target="_blank" rel="noopener">Renew on WhatsApp</a>` : ''}<span class="meta" style="user-select:all">${esc(SITE.phone)}</span></div>` : `<div class="meta" style="text-align:center">Renews on ${esc(fmtDate(addDays(m.expiry_date, 1)))}</div>`}
       </section>
     </div>
 
@@ -166,7 +168,7 @@ function renderDashboard() {
         <dl class="dl">${[['Membership ID', `<span class="mid">${esc(m.member_code)}</span>`], ['Phone', esc(m.phone || '—')], ['Email', esc(m.email || '—')], ['Height', m.height_cm ? esc(m.height_cm) + ' cm' : '—'], ['Goal', esc(m.goal || '—')], ['Trainer', esc(m.trainer || '—')], ['Joining offer', esc(m.offer || '—')]].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
         <div class="meta">Something wrong? Ask the front desk to update it.</div></section>
       <section class="panel"><h2>Payments</h2>
-        ${D.payments.length ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>For</th><th>Offer</th><th class="num">Amount</th></tr></thead><tbody>${D.payments.map(p => `<tr><td>${esc(fmtDate(p.paid_on))}</td><td>${p.type === 'registration' ? 'Registration fee' : (p.type === 'new' ? 'Joining' : 'Renewal') + ' · ' + esc(p.plan || '')}</td><td>${esc(p.offer || '—')}</td><td class="num">${esc(money(p.amount))}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No payments recorded.</div>'}</section>
+        ${D.payments.length ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>For</th><th>Offer</th><th class="num">Amount</th><th>Invoice</th></tr></thead><tbody>${D.payments.map(p => `<tr><td>${esc(fmtDate(p.paid_on))}</td><td>${p.type === 'registration' ? 'Registration fee' : (p.type === 'new' ? 'Joining' : 'Renewal') + ' · ' + esc(p.plan || '')}</td><td>${esc(p.offer || '—')}</td><td class="num">${esc(money(p.amount))}</td><td>${p.invoice_no ? `<button class="btn sm" data-act="invoice" data-inv="${esc(p.invoice_no)}">${esc(p.invoice_no)}</button>` : '—'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No payments recorded.</div>'}</section>
     </div>
 
     <section class="panel"><div class="panel-head"><h2>Studio hours</h2><span class="chip ${os.open ? 'good' : 'neutral'}">${esc(os.label)}</span></div>
@@ -197,6 +199,12 @@ async function onSession(s) {
   if (me.role !== 'member' || !me.member_id) {   // apply an invitation from the gym, if any
     try { const r = await supabase.rpc('claim_invitation'); if (r.data && r.data.ok) { const again = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle(); if (again.data) me = again.data; } } catch (e) { /* ignore */ }
   }
+  if (!['owner', 'manager', 'trainer', 'receptionist'].includes(me.role) && (me.role !== 'member' || !me.member_id)) {   // give website sign-ups their Membership ID
+    try {
+      const r = await supabase.rpc('ensure_my_membership');
+      if (r.data && r.data.ok) { const again = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle(); if (again.data) me = again.data; if (r.data.created) toast(`Welcome! Your Membership ID is ${r.data.code}`); }
+    } catch (e) { /* fall back to linking by ID */ }
+  }
   render();
   if (me.role === 'member' && me.member_id && !(me.access_until && me.access_until < today())) { try { await loadData(); } catch (e) { toast(friendly(e)); } render(); }
 }
@@ -206,6 +214,11 @@ document.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act;
   if (act === 'signOut') { await supabase.auth.signOut(); location.href = '/'; }
+  if (act === 'invoice') {
+    const m = D.member; const rows = D.payments.filter(p => p.invoice_no === el.dataset.inv);
+    const inv = invoiceData({ code: m.member_code, name: m.name, phone: m.phone, email: m.email, plan: m.plan, joinDate: m.join_date, expiryDate: m.expiry_date }, rows);
+    if (!printInvoice(inv)) toast('Allow pop-ups to open your invoice.');
+  }
   if (act === 'calPrev') { ui.calMonth = shiftMonth(ui.calMonth, -1); renderDashboard(); }
   if (act === 'calNext') { ui.calMonth = shiftMonth(ui.calMonth, 1); renderDashboard(); }
 });
@@ -215,7 +228,7 @@ document.addEventListener('submit', async e => {
   try {
     if (f.id === 'authForm') {
       if (f.dataset.mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email: v.email, password: v.password, options: { data: { full_name: v.name, portal: 'member' }, emailRedirectTo: location.origin + '/member.html' } });
+        const { data, error } = await supabase.auth.signUp({ email: v.email, password: v.password, options: { data: { full_name: v.name, phone: (v.phone || '').trim(), portal: 'member' }, emailRedirectTo: location.origin + '/member.html' } });
         if (error) throw error;
         if (!data.session) { renderLogin('signin', `<div class="ok">Login created. Open the confirmation link we sent to ${esc(v.email)}, then sign in here.</div>`); return; }
       } else if (f.dataset.mode === 'forgot') {
