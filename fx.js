@@ -1,5 +1,5 @@
 // Interaction layer, inspired by the best-UI examples (Popin, Fit Song, M&C Saatchi, White Coffee):
-// a quick preloader, scroll-driven type, a marquee band, a scrubbed step line, parallax + tilt on
+// scroll-driven type, a marquee band, a scrubbed step line, parallax + tilt on
 // the equipment art, and magnetic primary buttons. Everything is skipped for reduced motion.
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;

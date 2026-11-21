@@ -2,6 +2,7 @@ import './portal.css';
 import { logoUrl, BRAND, MARK, TAGLINE } from './brand.js';
 import { invoiceData, invoiceHtml, INVOICE_CSS, printInvoice } from './invoice.js';
 import { supabase, configured } from './supabase.js';
+import { showLoader } from './loader.js';
 import { SITE, DAYS, openStatus, fmtTime } from './site-config.js';
 import { esc, parse, today, addDays, addMonths, diffDays, mKey, curMonth, shiftMonth, fmtDate, fmtShort, fmtMonth, lineChart } from './lib.js';
 
@@ -21,6 +22,8 @@ function friendly(e) {
   if (/Failed to fetch|NetworkError/i.test(m)) return 'Could not reach the server. Check your internet connection and try again.';
   return m;
 }
+
+showLoader('member');
 
 /* ================= auth screens ================= */
 function authCard(inner) {

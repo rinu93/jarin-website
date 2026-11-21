@@ -34,9 +34,21 @@ export const DEFAULT_CONTENT = {
     'Offers cannot be combined. Special packages are approved by the studio manager.',
   ],
   hours: { open: '06:00', close: '22:30', closed: [], note: '' },
-  logo_reel: { loader: true, loaderSeconds: 15, dashboard: true, videos: [{ id: 'ember-aura', name: 'Ember Aura', enabled: true }, { id: 'iron-lock', name: 'Iron Lock', enabled: true }, { id: 'rep-pulse', name: 'Rep Pulse', enabled: true }] },
+  logo_reel: {
+    screens: { website: { on: true, clip: 'all', seconds: 15 }, employee: { on: true, clip: 'iron-lock', seconds: 10 }, member: { on: true, clip: 'rep-pulse', seconds: 8 } },
+    dashboard: true, videos: [{ id: 'ember-aura', name: 'Ember Aura', enabled: true }, { id: 'iron-lock', name: 'Iron Lock', enabled: true }, { id: 'rep-pulse', name: 'Rep Pulse', enabled: true }] },
 };
 export const LOGO_VIDEOS = { 'ember-aura': 'Ember Aura', 'iron-lock': 'Iron Lock', 'rep-pulse': 'Rep Pulse' };
+// Intro screens: which logo animation plays, and for how long, when each page opens.
+export const INTRO_SCREENS = { website: 'Website', employee: 'Employee login', member: 'Member login' };
+export function introFor(rc, key) {
+  const d = DEFAULT_CONTENT.logo_reel.screens[key]; const s = (rc && rc.screens && rc.screens[key]) || {};
+  const legacy = key === 'website' && rc && !rc.screens ? { on: rc.loader !== false, seconds: rc.loaderSeconds } : {};
+  const c = { ...d, ...legacy, ...s };
+  if (c.clip !== 'all' && !LOGO_VIDEOS[c.clip]) c.clip = 'all';
+  c.seconds = Math.min(60, Math.max(2, Number(c.seconds) || d.seconds));
+  return c;
+}
 export const OFFER_KINDS = { seasonal: 'Seasonal', student: 'Students', special: 'Special packages', referral: 'Referral rewards' };
 export const WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
