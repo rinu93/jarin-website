@@ -9,7 +9,7 @@ Staff use the separate **jarin-dashboard** project.
 
 | Name | Value |
 |---|---|
-| `VITE_SUPABASE_URL` | `https://ifrmtkzllqhhpvoahdwr.supabase.co` |
+| `VITE_SUPABASE_URL` | `https://yuvcjkdinbmjwfjwbxeb.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | the project's anon key (Supabase → Project Settings → API). Public by design. |
 | `ANTHROPIC_API_KEY` | your Claude API key from console.anthropic.com. Enter it only in Vercel. |
 | `CHAT_MODEL` *(optional)* | defaults to `claude-opus-5-5`. Set `claude-haiku-5-5` for a much cheaper assistant. |
