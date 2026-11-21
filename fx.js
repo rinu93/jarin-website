@@ -4,18 +4,6 @@
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-/* Preloader: plates load onto the bar once per visit, never longer than ~0.9s. */
-export function preloader() {
-  let seen = false; try { seen = sessionStorage.getItem('jarin-pre') === '1'; sessionStorage.setItem('jarin-pre', '1'); } catch { /* ignore */ }
-  if (reduced || seen) return;
-  const p = document.createElement('div');
-  p.className = 'pre'; p.setAttribute('aria-hidden', 'true');
-  p.innerHTML = '<div class="pre-in"><span><i></i><i></i><i></i></span><b>JARIN</b><span class="r"><i></i><i></i><i></i></span></div>';
-  document.body.appendChild(p);
-  const done = () => { p.classList.add('out'); setTimeout(() => p.remove(), 600); };
-  setTimeout(done, 900);
-}
-
 /* Marquee band: drifts on its own, speeds up with scroll velocity. */
 export function marquee() {
   const rows = [...document.querySelectorAll('.mq-row')];

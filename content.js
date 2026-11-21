@@ -34,7 +34,7 @@ export const DEFAULT_CONTENT = {
     'Offers cannot be combined. Special packages are approved by the studio manager.',
   ],
   hours: { open: '06:00', close: '22:30', closed: [], note: '' },
-  logo_reel: { enabled: true, dashboard: true, videos: [{ id: 'ember-aura', name: 'Ember Aura', enabled: true }, { id: 'iron-lock', name: 'Iron Lock', enabled: true }, { id: 'rep-pulse', name: 'Rep Pulse', enabled: true }] },
+  logo_reel: { loader: true, loaderSeconds: 15, dashboard: true, videos: [{ id: 'ember-aura', name: 'Ember Aura', enabled: true }, { id: 'iron-lock', name: 'Iron Lock', enabled: true }, { id: 'rep-pulse', name: 'Rep Pulse', enabled: true }] },
 };
 export const LOGO_VIDEOS = { 'ember-aura': 'Ember Aura', 'iron-lock': 'Iron Lock', 'rep-pulse': 'Rep Pulse' };
 export const OFFER_KINDS = { seasonal: 'Seasonal', student: 'Students', special: 'Special packages', referral: 'Referral rewards' };

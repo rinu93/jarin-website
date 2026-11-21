@@ -1,12 +1,12 @@
 import './site.css';
 import { SITE, openStatus, fmtTime, waNumber, telNumber } from './site-config.js';
 import { DEFAULT_CONTENT, contentFromRows, applyToSite, livePlans, perMonth, periodLabel, money as rupees, OFFER_KINDS } from './content.js';
-import { mountReel } from './reel.js';
+import { showLoader } from './loader.js';
 import { MARK, BRAND } from './brand.js';
 import { supabase, configured } from './supabase.js';
 import { mountChat, openChat } from './chat.js';
 import { mountPlayer } from './player.js';
-import { preloader, marquee as marqueeFx, scrollFx, pointerFx } from './fx.js';
+import { marquee as marqueeFx, scrollFx, pointerFx } from './fx.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => (SITE.currency || '₹') + Number(n).toLocaleString('en-IN');
@@ -104,14 +104,13 @@ const facts = () => `<div class="facts" id="facts">${C.facts.slice(0, 4).map((f,
 function hero() {
   const st = openStatus();
   return `<section class="hero"><div class="wrap">
+    <div class="hero-top">${C.fees.banner ? `<span class="banner" id="banner">${esc(C.fees.banner)}</span>` : '<span id="banner" hidden></span>'}<p class="open ${st.open ? 'on' : ''}" id="openNow"><i></i><span>${esc(st.label)}</span></p></div>
     <div class="hero-grid">
+      <h1><span>Glow up.</span><span>Lift up.</span><span>Level up.</span></h1>
       <div>
-        <div class="hero-top">${C.fees.banner ? `<span class="banner" id="banner">${esc(C.fees.banner)}</span>` : '<span id="banner" hidden></span>'}<p class="open ${st.open ? 'on' : ''}" id="openNow"><i></i><span>${esc(st.label)}</span></p></div>
-        <h1><span>Glow up.</span><span>Lift up.</span><span>Level up.</span></h1>
         <p class="lede">${esc(SITE.intro)}</p>
         <div class="cta"><a class="btn btn-cu" href="#trial">Book a trial day</a><a class="btn btn-line" href="#plans">See plans</a></div>
       </div>
-      <div class="reel" id="reel" aria-hidden="true"></div>
     </div>
     ${rack()}
     ${facts()}
@@ -263,12 +262,11 @@ const footer = () => `<footer><div class="wrap">
 </div></footer>`;
 
 /* ---------------- render ---------------- */
-preloader();
+showLoader();
 mountPlayer();
 document.getElementById('app').innerHTML = header() + '<main>' + hero() + marquee() + plans() + benefits() + offers() + trial() + training() + digital() + extras() + equipment() + visit() + terms() + '</main>' + footer();
 mountChat();
 marqueeFx(); scrollFx(); pointerFx();
-mountReel(document.getElementById('reel'), C.logo_reel);
 
 const top = document.getElementById('top');
 const onScroll = () => top.classList.toggle('solid', window.scrollY > 10);
@@ -317,7 +315,6 @@ function refreshContent() {
   swap('plans', plans()); swap('benefits', benefits()); swap('extras', extras()); swap('visit', visit()); swap('terms', terms());
   const lede = document.getElementById('trialLede'); if (lede) lede.textContent = `Send your details and a coach calls to fix your trial day. ${C.fees.trialPass ? `The one-day pass is ${rupees(C.fees.trialPass)}.` : 'Your trial day is free.'}`;
   const sel = document.getElementById('t_interest'); if (sel) { const cur = sel.value; const list = [...new Set(['Membership enquiry', ...livePlans(C).map(p => `${p.name} plan`), 'Personal trainer', ...SITE.services.map(s => s.title), ...C.services.map(s => s.title)])]; sel.innerHTML = list.map(x => `<option>${esc(x)}</option>`).join(''); if (list.includes(cur)) sel.value = cur; }
-  mountReel(document.getElementById('reel'), C.logo_reel);
   refreshOpen(); pointerFx();
 }
 async function loadLive() {
