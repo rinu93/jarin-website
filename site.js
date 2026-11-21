@@ -1,5 +1,7 @@
 import './site.css';
-import { SITE, DAYS, openStatus, fmtTime, waNumber, telNumber } from './site-config.js';
+import { SITE, openStatus, fmtTime, waNumber, telNumber } from './site-config.js';
+import { DEFAULT_CONTENT, contentFromRows, applyToSite, livePlans, perMonth, periodLabel, money as rupees, OFFER_KINDS } from './content.js';
+import { mountReel } from './reel.js';
 import { MARK, BRAND } from './brand.js';
 import { supabase, configured } from './supabase.js';
 import { mountChat, openChat } from './chat.js';
@@ -75,11 +77,20 @@ const EQ_ART = {
   kettlebell: `<svg viewBox="0 0 200 150"><path class="soft" d="M10 138h180"/><path d="M60 78V60a24 24 0 0 1 48 0v18" stroke-width="6"/><path d="M48 104a36 36 0 1 1 72 0c0 16-6 28-9 34H57c-3-6-9-18-9-34z" class="fillcu"/><path d="M134 104V94a14 14 0 0 1 28 0v10" stroke-width="4"/><path d="M128 120a20 20 0 1 1 40 0c0 8-3 14-5 18h-30c-2-4-5-10-5-18z" class="fillcu" opacity=".75"/></svg>`,
 };
 
-/* ---------------- sections ---------------- */
+
+/* ---------------- content (live from the dashboard, defaults until it loads) ---------------- */
+let C = contentFromRows([]);
+let OFFERS = [];
+applyToSite(SITE, C);
+const cultPlans = () => livePlans(C).filter(p => p.cult).map(p => p.name);
+
+/* ---------------- sections ----------------
+   Order: hero (facts) → plans → what you get → offers → trial → training → member app → extras
+   → equipment → visit → good to know. Each fact appears once; later sections refer back to it. */
 const dashUrl = SITE.dashboardUrl || '#';
 const header = () => `<header class="top" id="top"><div class="wrap top-in">
   <a class="logo" href="#" aria-label="${esc(BRAND)} home">${MARK}<span class="wm"><b>JARIN</b><small>FITNESS STUDIO</small></span></a>
-  <nav class="nav" aria-label="Sections"><a href="#digital">Why JARIN</a><a href="#trial">Free trial</a><a href="#training">Training</a><a href="#plans">Plans</a><a href="#offers" id="navOffers" hidden>Offers</a><a href="#visit">Visit</a></nav>
+  <nav class="nav" aria-label="Sections"><a href="#plans">Plans</a><a href="#offers" id="navOffers" hidden>Offers</a><a href="#trial">Trial</a><a href="#training">Training</a><a href="#digital">App</a><a href="#visit">Visit</a></nav>
   <div class="logins" role="group" aria-label="Sign in">
     <a href="${esc(dashUrl)}" aria-label="Employee login">${icon('staff')}<span>Employee</span></a>
     <a class="member" href="/member" aria-label="Member login">${icon('member')}<span>Member</span></a>
@@ -87,76 +98,90 @@ const header = () => `<header class="top" id="top"><div class="wrap top-in">
   <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false">${icon('menu')}</button>
 </div></header>`;
 
+const FACT_ICONS = ['sq', 'calendar', 'strength', 'coach'];
+const facts = () => `<div class="facts" id="facts">${C.facts.slice(0, 4).map((f, i) => `<div class="fact">${icon(FACT_ICONS[i] || 'check')}<div><b>${esc(f.value)}</b><span>${esc(f.label)}</span></div></div>`).join('')}</div>`;
+
 function hero() {
   const st = openStatus();
   return `<section class="hero"><div class="wrap">
     <div class="hero-grid">
       <div>
-        <p class="open ${st.open ? 'on' : ''}" id="openNow"><i></i><span>${esc(st.label)}</span></p>
+        <div class="hero-top">${C.fees.banner ? `<span class="banner" id="banner">${esc(C.fees.banner)}</span>` : '<span id="banner" hidden></span>'}<p class="open ${st.open ? 'on' : ''}" id="openNow"><i></i><span>${esc(st.label)}</span></p></div>
         <h1><span>Glow up.</span><span>Lift up.</span><span>Level up.</span></h1>
-      </div>
-      <div>
         <p class="lede">${esc(SITE.intro)}</p>
-        <div class="cta"><a class="btn btn-cu" href="#trial">Book a free trial</a><button class="btn btn-line" data-open-chat>${icon('chat')}Ask us anything</button></div>
+        <div class="cta"><a class="btn btn-cu" href="#trial">Book a trial day</a><a class="btn btn-line" href="#plans">See plans</a></div>
       </div>
+      <div class="reel" id="reel" aria-hidden="true"></div>
     </div>
     ${rack()}
-    <div class="facts">
-      <div class="fact">${icon('sq')}<div><b>2,000 sq ft</b><span>training floor</span></div></div>
-      <div class="fact">${icon('snow')}<div><b>Air-conditioned</b><span>cool, all year round</span></div></div>
-      <div class="fact">${icon('app')}<div><b>Digital</b><span>app, check-ins, progress</span></div></div>
-      <div class="fact">${icon('coach')}<div><b>${esc((SITE.stats.find(s => /coach/i.test(s.label)) || { value: '6' }).value)} coaches</b><span>certified, on every shift</span></div></div>
-    </div>
+    ${facts()}
   </div></section>`;
 }
 
-function phone() {
-  const on = [1, 2, 4, 5, 7, 8, 9, 11, 12, 14, 15, 16, 18, 19, 21, 22, 23, 25, 26];
-  return `<div class="phone-wrap" aria-hidden="true"><div class="phone"><div class="notch"></div><div class="screen">
-    <div class="ph-hi">${MARK}Hi, Anjali</div>
-    <div class="card"><div class="card-top">${MARK}<i>Active</i></div><b>JFS-0042</b><span>Anjali Menon</span><div class="row"><div><small>PLAN</small>Quarterly</div><div><small>VALID TILL</small>28 Feb</div></div></div>
-    <div class="ph-stats"><div><b>16</b><small>visits this month</small></div><div><b style="color:var(--cu)">−4.2</b><small>kg since joining</small></div></div>
-    <div class="ph-cal">${Array.from({ length: 28 }, (_, i) => `<span class="${on.includes(i + 1) ? 'on' : ''}">${i + 1}</span>`).join('')}</div>
-    <div class="ph-offer">🎁 <b>10% off</b> if you renew this week</div>
-  </div></div></div>`;
+function marquee() {
+  const set = ['Strength', 'HIIT', 'Cardio', 'Functional', 'Bodybuilding', 'Personal training'].map(w => `<span>${esc(w)}</span><i></i>`).join('');
+  const alt = ['Push day', 'Pull day', 'Leg day', 'Core', 'Mobility', 'Morning grind', 'Evening pump'].map(w => `<span>${esc(w)}</span><i></i>`).join('');
+  return `<div class="mq" aria-hidden="true"><div class="mq-row"><div>${set}</div><div>${set}</div></div><div class="mq-row out"><div>${alt}</div><div>${alt}</div></div></div>`;
 }
 
-const digital = () => `<section class="digital" id="digital"><div class="wrap">
-  <div class="dg">
-    ${phone()}
-    <div>
-      ${plates}
-      <h2>A digital gym, built around you</h2>
-      <p class="lede">Your membership card, every visit, your weight and BMI, and your renewal offers live in your own member portal. You always know where you stand.</p>
-      <ul class="dig-list">${(SITE.digital || []).map(d => `<li>${icon(d.icon)}<div><h3>${esc(d.title)}</h3><p>${esc(d.text)}</p></div></li>`).join('')}</ul>
-    </div>
-  </div>
-  <div class="perks"><b>Member perks</b>${(SITE.perks || []).map(p => `<span>${icon(p.icon)}${esc(p.text)}</span>`).join('')}</div>
+function plans() {
+  const ps = livePlans(C); const f = C.fees;
+  const same = ps.length > 1 && ps.every(p => perMonth(p) === perMonth(ps[0]));
+  return `<section id="plans"><div class="wrap">
+    <div class="sec-top"><div>${plates}<h2>Pick your plan</h2></div><p class="lede">${same ? `The same ${esc(rupees(perMonth(ps[0])))} a month, whichever plan you choose.` : 'Longer plans cost less per month.'}${cultPlans().length ? ` Go ${esc(cultPlans().join(' or ').toLowerCase())} to unlock the Cult app.` : ''}</p></div>
+    <ol class="psteps">
+      <li class="pstep"><span class="pnum">Step 1</span><div><h3>One-time registration</h3><p>Paid once when you join, on every plan.</p></div><b class="pprice">${esc(rupees(f.registration))}</b></li>
+      <li class="pstep wide"><span class="pnum">Step 2</span><div><h3>Choose your membership</h3></div>
+        <div class="plan-grid">${ps.map(p => `<article class="plan ${p.popular ? 'pop' : ''}">${p.popular ? '<span class="tag">Most chosen</span>' : ''}
+          <h3>${esc(p.name)}</h3><div class="price">${esc(rupees(p.price))}<small>${esc(periodLabel(p))}</small></div>
+          <ul>${same ? '' : `<li>${icon('check')}<span>Works out to ${esc(rupees(perMonth(p)))} a month</span></li>`}<li>${icon('check')}<span>Pay on joining ${esc(rupees(p.price + f.registration))}, registration included</span></li>${p.cult ? `<li class="cult">${icon('app')}<span>Cult app access included</span></li>` : ''}</ul>
+          <a class="btn ${p.popular ? 'btn-cu' : 'btn-line'} btn-sm" href="#trial" data-plan="${esc(p.name)}">Choose ${esc(p.name)}</a></article>`).join('')}</div></li>
+      <li class="pstep"><span class="pnum">Step 3 · optional</span><div><h3>Add a personal trainer</h3><p>One-to-one coaching with a plan of your own, on any membership.</p></div><b class="pprice">${esc(rupees(f.ptMonthly))}<small>/month</small></b></li>
+    </ol>
+    ${f.locker ? `<p class="note">Want your own locker? A personal locker is ${esc(rupees(f.locker))} a month.</p>` : ''}
+  </div></section>`;
+}
+
+function benefits() {
+  const ps = livePlans(C);
+  const has = (b, p) => b.who === 'all' || (b.who === 'annual' && p.cult);
+  return `<section id="benefits"><div class="wrap">
+    <div class="sec-top"><div>${plates}<h2>What you get</h2></div><p class="lede">Every plan opens the full floor at all opening hours. Here is what comes with each one.</p></div>
+    <div class="ben-wrap"><table class="ben"><thead><tr><th scope="col">Benefit</th>${ps.map(p => `<th scope="col">${esc(p.name)}</th>`).join('')}</tr></thead>
+      <tbody>${C.benefits.map(b => `<tr><th scope="row">${esc(b.text)}</th>${ps.map(p => `<td>${has(b, p) ? `<span class="yes" aria-label="Included">${icon('check')}</span>` : '<span class="no" aria-label="Not included">–</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+  </div></section>`;
+}
+
+const offers = () => `<section id="offers" hidden><div class="wrap">
+  <div class="sec-top"><div>${plates}<h2>Offers</h2></div><p class="lede">Limited-time prices, student rates and rewards for bringing friends.</p></div>
+  <div class="tabs" role="tablist" aria-label="Offer types" id="offerTabs"></div>
+  <div class="offer-grid" id="offerList" role="tabpanel"></div>
 </div></section>`;
 
 function trial() {
-  const interests = ['Membership enquiry', ...SITE.services.map(s => s.title)];
+  const interests = ['Membership enquiry', ...livePlans(C).map(p => `${p.name} plan`), 'Personal trainer', ...SITE.services.map(s => s.title), ...C.services.map(s => s.title)];
+  const pass = C.fees.trialPass ? `The one-day pass is ${rupees(C.fees.trialPass)}.` : 'Your trial day is free.';
   return `<section class="trial" id="trial"><div class="wrap tg">
     <div>
       ${plates}
-      <h2>Your first session is on us</h2>
-      <p class="lede">Tell us when suits you. A JARIN coach calls you to fix a time.</p>
+      <h2>Try a day at JARIN</h2>
+      <p class="lede" id="trialLede">Send your details and a coach calls to fix your trial day. ${esc(pass)}</p>
       <ol class="steps">
         <li><b>1</b><div><h3>Book a slot</h3><p>Send the form, or ask the assistant in the corner of the page.</p></div></li>
         <li><b>2</b><div><h3>Tour and body check</h3><p>See the floor, meet a coach and get a body composition reading.</p></div></li>
-        <li><b>3</b><div><h3>Train with a coach</h3><p>A guided first workout planned around your goal. No obligation to join.</p></div></li>
+        <li><b>3</b><div><h3>Train with a coach</h3><p>A guided workout planned around your goal. No obligation to join.</p></div></li>
       </ol>
     </div>
     <form class="form" id="trialForm" novalidate>
-      <h3>Book a free trial</h3>
+      <h3>Book a trial day</h3>
       <label>Full name<input id="t_name" name="name" required maxlength="100" autocomplete="name"></label>
       <label>Phone<input id="t_phone" name="phone" type="tel" required maxlength="30" autocomplete="tel" placeholder="+91"></label>
       <label class="full">Email (optional)<input id="t_email" name="email" type="email" maxlength="200" autocomplete="email"></label>
-      <label>Interested in<select id="t_interest" name="interest">${interests.map(x => `<option>${esc(x)}</option>`).join('')}</select></label>
-      <label>Best time<select id="t_time" name="preferred_time"><option>Morning (5:30 – 10 AM)</option><option>Midday (10 AM – 4 PM)</option><option>Evening (4 – 10 PM)</option><option>Weekend</option></select></label>
+      <label>Interested in<select id="t_interest" name="interest">${[...new Set(interests)].map(x => `<option>${esc(x)}</option>`).join('')}</select></label>
+      <label>Best time<select id="t_time" name="preferred_time"><option>Morning (6 – 10 AM)</option><option>Midday (10 AM – 4 PM)</option><option>Evening (4 – 10:30 PM)</option><option>Weekend</option></select></label>
       <label class="full">Your goal (optional)<textarea id="t_msg" name="message" maxlength="1000" placeholder="For example: lose 8 kg before March"></textarea></label>
       <label class="hp" aria-hidden="true">Leave empty<input name="website" tabindex="-1" autocomplete="off"></label>
-      <button class="btn btn-cu full" type="submit">Book my free trial</button>
+      <button class="btn btn-cu full" type="submit">Book my trial day</button>
       <div class="msg" id="trialMsg" role="status"></div>
       <p class="alt">Rather chat? <button type="button" data-open-chat>Ask the JARIN assistant</button></p>
     </form>
@@ -164,49 +189,61 @@ function trial() {
 }
 
 const training = () => `<section id="training"><div class="wrap">
-  <div class="sec-top"><div>${plates}<h2>Training for every goal</h2></div><p class="lede">From your first squat to your next personal best, our coaches plan the work and keep you accountable.</p></div>
+  <div class="sec-top"><div>${plates}<h2>Train your way</h2></div><p class="lede">From your first squat to your next personal best, our trainers plan the work and keep you accountable.</p></div>
   <div class="train-list">${SITE.services.map(s => `<article class="tr"><div class="ic">${icon(s.icon)}</div><div><h3>${esc(s.title)}</h3><p>${esc(s.text)}</p></div></article>`).join('')}</div>
 </div></section>`;
 
+function phone() {
+  const on = [1, 2, 4, 5, 7, 8, 9, 11, 12, 14, 15, 16, 18, 19, 21, 22, 23, 25, 26];
+  return `<div class="phone-wrap" aria-hidden="true"><div class="phone"><div class="notch"></div><div class="screen">
+    <div class="ph-hi">${MARK}Hi, Anjali</div>
+    <div class="card"><div class="card-top">${MARK}<i>Active</i></div><b>JFS-0042</b><span>Anjali Menon</span><div class="row"><div><small>PLAN</small>Annual</div><div><small>VALID TILL</small>28 Feb</div></div></div>
+    <div class="ph-stats"><div><b>16</b><small>visits this month</small></div><div><b style="color:var(--cu)">−4.2</b><small>kg since joining</small></div></div>
+    <div class="ph-cal">${Array.from({ length: 28 }, (_, i) => `<span class="${on.includes(i + 1) ? 'on' : ''}">${i + 1}</span>`).join('')}</div>
+    <div class="ph-offer">🎁 <b>A renewal offer</b> made just for you</div>
+  </div></div></div>`;
+}
+const digital = () => `<section class="digital" id="digital"><div class="wrap">
+  <div class="dg">
+    ${phone()}
+    <div>
+      ${plates}
+      <h2>Your gym in your pocket</h2>
+      <p class="lede">Your membership card, every visit, your weight and BMI, and your renewal offers live in your own member portal.</p>
+      <ul class="dig-list">${(SITE.digital || []).filter(d => d.icon !== 'app').map(d => `<li>${icon(d.icon)}<div><h3>${esc(d.title)}</h3><p>${esc(d.text)}</p></div></li>`).join('')}</ul>
+      <div class="cta"><a class="btn btn-line btn-sm" href="/member">${icon('member')}Open the member portal</a></div>
+    </div>
+  </div>
+</div></section>`;
+
+const extras = () => `<section id="extras"><div class="wrap">
+  <div class="sec-top"><div>${plates}<h2>Go further</h2></div><p class="lede">Expert support and everything you need on the floor. Ask at the front desk.</p></div>
+  <div class="ex-grid">${C.services.map(s => `<article class="ex"><h3>${esc(s.title)}</h3><ul>${(s.items || []).map(([n, p]) => `<li><span>${esc(n)}</span><b>${esc(rupees(p))}</b></li>`).join('')}</ul>${s.note ? `<p>${esc(s.note)}</p>` : ''}</article>`).join('')}</div>
+</div></section>`;
+
 const equipment = () => `<section class="equipment" id="equipment"><div class="wrap">
-  <div class="sec-top"><div>${plates}<h2>The floor</h2></div><p class="lede">Commercial-grade machines, serviced on schedule and tracked in our maintenance log.</p></div>
+  <div class="sec-top"><div>${plates}<h2>The floor</h2></div><p class="lede">Every machine is serviced on schedule and tracked in our maintenance log.</p></div>
   <div class="eq-grid">${SITE.equipment.map(e => `<article class="eq"><div class="eq-art" aria-hidden="true">${EQ_ART[e.art] || EQ_ART.dumbbells}</div><div class="eq-body"><h3>${esc(e.title)}</h3><ul>${e.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></article>`).join('')}</div>
 </div></section>`;
 
-const plans = () => `<section id="plans"><div class="wrap">
-  <div class="sec-top"><div>${plates}<h2>Membership plans</h2></div>
-    ${SITE.registrationFee ? `<div class="fee"><b>${esc(money(SITE.registrationFee))}</b><span>One-time registration fee<br>for first-time members</span></div>` : ''}</div>
-  <div class="plan-grid">${SITE.plans.map(p => `<article class="plan ${p.popular ? 'pop' : ''}">${p.popular ? '<span class="tag">Most chosen</span>' : ''}
-    <h3>${esc(p.name)}</h3><div class="price">${esc(money(p.price))}<small>${esc(p.period)}</small></div>
-    ${SITE.registrationFee ? `<p class="reg">+ ${esc(money(SITE.registrationFee))} registration, first time only</p>` : ''}
-    <ul>${p.perks.map(x => `<li>${icon('check')}<span>${esc(x)}</span></li>`).join('')}</ul>
-    <a class="btn ${p.popular ? 'btn-cu' : 'btn-line'} btn-sm" href="#trial" data-plan="${esc(p.name)}">Start with ${esc(p.name)}</a></article>`).join('')}</div>
-  ${SITE.plansNote ? `<p class="note">${esc(SITE.plansNote)}</p>` : ''}
-  <div class="reach"><div><h3>Reach out to us for more offers</h3><p>${esc(SITE.offersNote || '')}</p></div>
-    <div class="cta"><a class="btn btn-cu btn-sm" href="https://wa.me/${waNumber()}?text=${encodeURIComponent('Hi JARIN, I would like to know about your latest membership offers.')}" target="_blank" rel="noopener">WhatsApp us</a><a class="btn btn-line btn-sm" href="tel:${esc(telNumber())}">Call ${esc(SITE.phone)}</a></div></div>
-</div></section>`;
-
-const offers = () => `<section id="offers" hidden><div class="wrap"><div class="sec-top"><div>${plates}<h2>Offers right now</h2></div></div><div class="offer-grid" id="offerList"></div></div></section>`;
-
 function visit() {
-  const todayName = DAYS[(new Date().getDay() + 6) % 7];
   const dir = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(SITE.mapQuery)}`;
+  const closed = C.hours.closed || [];
   return `<section id="visit"><div class="wrap">
-    <div class="sec-top"><div>${plates}<h2>Visit the studio</h2></div><p class="lede">${esc(SITE.addressLines.join(', '))}</p></div>
+    <div class="sec-top"><div>${plates}<h2>Visit the studio</h2></div><p class="lede">${esc(SITE.landmark ? `Find us ${SITE.landmark.charAt(0).toLowerCase() + SITE.landmark.slice(1)}, on Main Road, Thuckalay.` : SITE.addressLines.join(', '))}</p></div>
     <div class="vg">
       <div class="box">
-        <h3>Opening hours</h3>
-        <table class="hours">${DAYS.map(d => { const s = SITE.hours[d] || []; return `<tr class="${d === todayName ? 'today' : ''}"><td>${d}${d === todayName ? ' (today)' : ''}</td><td class="${s.length ? '' : 'closed'}">${s.length ? s.map(([a, b]) => `${fmtTime(a)} – ${fmtTime(b)}`).join(', ') : 'Closed'}</td></tr>`; }).join('')}</table>
-        ${SITE.hoursNote ? `<p class="note">${esc(SITE.hoursNote)}</p>` : ''}
         <ul class="contact">
-          <li>${icon('pin')}<div>${SITE.addressLines.map(esc).join('<br>')}${SITE.landmark ? `<br><span style="color:var(--smoke)">${esc(SITE.landmark)}</span>` : ''}</div></li>
+          <li>${icon('pin')}<div>${SITE.addressLines.map(esc).join('<br>')}</div></li>
+          ${closed.length ? `<li>${icon('calendar')}<span>Closed on ${esc(closed.join(', '))}</span></li>` : ''}
+          ${C.hours.note ? `<li>${icon('calendar')}<span>${esc(C.hours.note)}</span></li>` : ''}
           ${SITE.parking ? `<li>${icon('car')}<span>${esc(SITE.parking)}</span></li>` : ''}
           <li>${icon('phone')}<a href="tel:${esc(telNumber())}">${esc(SITE.phone)}</a></li>
           <li>${icon('chat')}<a href="https://wa.me/${waNumber()}" target="_blank" rel="noopener">WhatsApp +${esc(waNumber())}</a></li>
           <li>${icon('mail')}<a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a></li>
           ${SITE.instagram ? `<li>${icon('insta')}<a href="https://instagram.com/${esc(SITE.instagram)}" target="_blank" rel="noopener">@${esc(SITE.instagram)}</a></li>` : ''}
         </ul>
-        <div class="cta"><a class="btn btn-cu btn-sm" href="${dir}" target="_blank" rel="noopener">Get directions</a></div>
+        <div class="cta"><a class="btn btn-cu btn-sm" href="${dir}" target="_blank" rel="noopener">Get directions</a><a class="btn btn-line btn-sm" href="https://wa.me/${waNumber()}?text=${encodeURIComponent('Hi JARIN, I would like to know about your latest offers.')}" target="_blank" rel="noopener">Ask about offers</a></div>
       </div>
       <div class="map"><a class="map-fb" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SITE.mapQuery)}" target="_blank" rel="noopener">${icon('pin')}<b>${esc(SITE.name)}</b><span>Open in Google Maps</span></a>
         <iframe title="Map of ${esc(SITE.name)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${encodeURIComponent(SITE.mapQuery)}&output=embed"></iframe></div>
@@ -214,29 +251,24 @@ function visit() {
   </div></section>`;
 }
 
+const terms = () => `<section id="terms" class="terms"><div class="wrap"><h2>Good to know</h2><ul>${C.terms.map(t => `<li>${esc(t)}</li>`).join('')}<li>${esc(C.fees.gstNote)}</li></ul></div></section>`;
+
 const footer = () => `<footer><div class="wrap">
   <div class="fg">
-    <div><a class="logo" href="#">${MARK}<span class="wm"><b>JARIN</b><small>FITNESS STUDIO</small></span></a><p style="color:var(--smoke);margin-top:16px;max-width:34ch">${esc(SITE.tagline)}</p></div>
-    <div><h4>Explore</h4><ul><li><a href="#digital">Why JARIN</a></li><li><a href="#trial">Free trial</a></li><li><a href="#training">Training</a></li><li><a href="#plans">Plans</a></li><li><a href="#visit">Visit</a></li></ul></div>
+    <div><a class="logo" href="#">${MARK}<span class="wm"><b>JARIN</b><small>FITNESS STUDIO</small></span></a></div>
+    <div><h4>Explore</h4><ul><li><a href="#plans">Plans</a></li><li><a href="#offers">Offers</a></li><li><a href="#trial">Trial day</a></li><li><a href="#training">Training</a></li><li><a href="#extras">Diet, physio & stall</a></li></ul></div>
     <div><h4>Sign in</h4><ul><li><a href="/member">Member portal</a></li><li><a href="${esc(dashUrl)}">Employee dashboard</a></li></ul></div>
-    <div><h4>Contact</h4><ul><li><a href="tel:${esc(telNumber())}">${esc(SITE.phone)}</a></li><li><a href="https://wa.me/${waNumber()}" target="_blank" rel="noopener">WhatsApp</a></li><li><a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a></li></ul></div>
   </div>
-  <div class="legal"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><span>${esc(SITE.addressLines.join(', '))}</span></div>
+  <div class="legal"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><span>Thuckalay, Tamil Nadu</span></div>
 </div></footer>`;
-
-function marquee() {
-  const words = ['Strength', '2,000 sq ft', 'Cardio', 'Air-conditioned', 'HIIT', 'Personal training', 'Digital gym', 'Thuckalay'];
-  const set = words.map(w => `<span>${esc(w)}</span><i></i>`).join('');
-  const alt = ['Glow up', 'Lift up', 'Level up', 'Free trial', 'Certified coaches'].map(w => `<span>${esc(w)}</span><i></i>`).join('');
-  return `<div class="mq" aria-hidden="true"><div class="mq-row"><div>${set}</div><div>${set}</div></div><div class="mq-row out"><div>${alt}${alt}</div><div>${alt}${alt}</div></div></div>`;
-}
 
 /* ---------------- render ---------------- */
 preloader();
 mountPlayer();
-document.getElementById('app').innerHTML = header() + '<main>' + hero() + marquee() + digital() + trial() + training() + equipment() + plans() + offers() + visit() + '</main>' + footer();
+document.getElementById('app').innerHTML = header() + '<main>' + hero() + marquee() + plans() + benefits() + offers() + trial() + training() + digital() + extras() + equipment() + visit() + terms() + '</main>' + footer();
 mountChat();
 marqueeFx(); scrollFx(); pointerFx();
+mountReel(document.getElementById('reel'), C.logo_reel);
 
 const top = document.getElementById('top');
 const onScroll = () => top.classList.toggle('solid', window.scrollY > 10);
@@ -244,21 +276,68 @@ addEventListener('scroll', onScroll, { passive: true }); onScroll();
 const burger = document.getElementById('burger');
 burger.addEventListener('click', () => { const o = top.classList.toggle('open'); burger.setAttribute('aria-expanded', String(o)); });
 top.querySelectorAll('.nav a').forEach(a => a.addEventListener('click', () => { top.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }));
-document.querySelectorAll('[data-open-chat]').forEach(b => b.addEventListener('click', () => openChat()));
-document.querySelectorAll('[data-plan]').forEach(b => b.addEventListener('click', () => {
-  document.getElementById('t_interest').value = 'Membership enquiry';
-  const m = document.getElementById('t_msg'); if (!m.value) m.value = `I'm interested in the ${b.dataset.plan} plan.`;
-}));
-setInterval(() => { const st = openStatus(); const el = document.getElementById('openNow'); el.classList.toggle('on', st.open); el.querySelector('span').textContent = st.label; }, 60000);
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-open-chat]')) { openChat(); return; }
+  const plan = e.target.closest('[data-plan]');
+  if (plan) { const sel = document.getElementById('t_interest'); const want = `${plan.dataset.plan} plan`; if ([...sel.options].some(o => o.value === want)) sel.value = want; const m = document.getElementById('t_msg'); if (!m.value) m.value = `I'm interested in the ${plan.dataset.plan} plan.`; }
+  const claim = e.target.closest('[data-claim]');
+  if (claim) { document.getElementById('t_interest').value = 'Membership enquiry'; const m = document.getElementById('t_msg'); m.value = `I'd like the "${claim.dataset.claim}" offer.`; }
+  const tab = e.target.closest('[data-kind]');
+  if (tab) { offerKind = tab.dataset.kind; drawOffers(); }
+});
+const refreshOpen = () => { const st = openStatus(); const el = document.getElementById('openNow'); el.classList.toggle('on', st.open); el.querySelector('span').textContent = st.label; };
+setInterval(refreshOpen, 60000);
 
-/* live offers */
-(async () => {
+/* ---------------- offers ---------------- */
+let offerKind = 'seasonal';
+const fmtD = d => new Date(d + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+function drawOffers() {
+  const kinds = Object.keys(OFFER_KINDS).filter(k => OFFERS.some(o => (o.kind || 'seasonal') === k));
+  if (!kinds.includes(offerKind)) offerKind = kinds[0];
+  document.getElementById('offerTabs').innerHTML = kinds.length > 1 ? kinds.map(k => `<button role="tab" data-kind="${k}" aria-selected="${k === offerKind}">${esc(OFFER_KINDS[k])}</button>`).join('') : '';
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('offerList').innerHTML = OFFERS.filter(o => (o.kind || 'seasonal') === offerKind).map(o => {
+    const soon = o.starts_on && o.starts_on > today;
+    const rows = Array.isArray(o.price_rows) ? o.price_rows : [];
+    return `<article class="offer">
+      <div class="offer-top">${o.tag ? `<div class="big">${esc(o.tag)}</div>` : ''}${o.highlight ? `<span class="hl">${esc(o.highlight)}</span>` : ''}</div>
+      <h3>${esc(o.title)}</h3>
+      ${rows.length ? `<ul class="prows">${rows.map(r => `<li><span>${esc(r.label)}</span><span>${r.was && Number(r.was) !== Number(r.now) ? `<s>${esc(rupees(r.was))}</s>` : ''}<b>${esc(rupees(r.now))}</b></span></li>`).join('')}</ul>` : ''}
+      ${o.details ? `<p>${esc(o.details)}</p>` : ''}
+      ${soon ? `<small>Starts ${esc(fmtD(o.starts_on))}</small>` : o.valid_until ? `<small>Valid till ${esc(fmtD(o.valid_until))}</small>` : ''}
+      <div class="cta" style="margin-top:auto;padding-top:18px"><a class="btn btn-line btn-sm" href="#trial" data-claim="${esc(o.title)}">${soon ? 'Reserve this offer' : 'Claim this offer'}</a></div></article>`;
+  }).join('');
+}
+
+/* ---------------- live content and offers ---------------- */
+function refreshContent() {
+  const swap = (id, html) => { const el = document.getElementById(id); if (el) el.outerHTML = html; };
+  swap('facts', facts());
+  const b = document.getElementById('banner'); if (b) { b.hidden = !C.fees.banner; b.textContent = C.fees.banner || ''; }
+  swap('plans', plans()); swap('benefits', benefits()); swap('extras', extras()); swap('visit', visit()); swap('terms', terms());
+  const lede = document.getElementById('trialLede'); if (lede) lede.textContent = `Send your details and a coach calls to fix your trial day. ${C.fees.trialPass ? `The one-day pass is ${rupees(C.fees.trialPass)}.` : 'Your trial day is free.'}`;
+  const sel = document.getElementById('t_interest'); if (sel) { const cur = sel.value; const list = [...new Set(['Membership enquiry', ...livePlans(C).map(p => `${p.name} plan`), 'Personal trainer', ...SITE.services.map(s => s.title), ...C.services.map(s => s.title)])]; sel.innerHTML = list.map(x => `<option>${esc(x)}</option>`).join(''); if (list.includes(cur)) sel.value = cur; }
+  mountReel(document.getElementById('reel'), C.logo_reel);
+  refreshOpen(); pointerFx();
+}
+async function loadLive() {
   if (!configured) return;
-  const { data } = await supabase.from('offers').select('title,details,tag,valid_until').order('created_at', { ascending: false }).limit(6);
-  if (!data || !data.length) return;
-  document.getElementById('offerList').innerHTML = data.map(o => `<article class="offer">${o.tag ? `<div class="big">${esc(o.tag)}</div>` : ''}<h3>${esc(o.title)}</h3>${o.details ? `<p>${esc(o.details)}</p>` : ''}${o.valid_until ? `<small>Valid till ${esc(new Date(o.valid_until + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }))}</small>` : ''}<div class="cta" style="margin-top:18px"><a class="btn btn-line btn-sm" href="#trial">Claim this offer</a></div></article>`).join('');
-  document.getElementById('offers').hidden = false; document.getElementById('navOffers').hidden = false;
-})();
+  const [c, o] = await Promise.all([
+    supabase.from('site_content').select('key,value'),
+    supabase.from('offers').select('title,details,tag,valid_until,kind,starts_on,price_rows,highlight,sort,audience').order('sort'),
+  ]);
+  if (!c.error && c.data && c.data.length) { C = contentFromRows(c.data); applyToSite(SITE, C); refreshContent(); }
+  if (!o.error && o.data) {
+    OFFERS = o.data.slice().sort((x, y) => (x.sort ?? 0) - (y.sort ?? 0)); SITE.offers = OFFERS;
+    const has = OFFERS.length > 0; document.getElementById('offers').hidden = !has; document.getElementById('navOffers').hidden = !has;
+    if (has) drawOffers();
+  }
+}
+loadLive().catch(() => { /* defaults stay */ });
+if (configured) {
+  let t = 0; const again = () => { clearTimeout(t); t = setTimeout(() => loadLive().catch(() => {}), 400); };
+  supabase.channel('jfs-content').on('postgres_changes', { event: '*', schema: 'public', table: 'site_content' }, again).on('postgres_changes', { event: '*', schema: 'public', table: 'offers' }, again).subscribe();
+}
 
 /* trial form → enquiries */
 const form = document.getElementById('trialForm');
@@ -273,7 +352,7 @@ form.addEventListener('submit', async e => {
   if (!configured) return say('err', `Online booking isn't set up yet. Call us on ${SITE.phone}.`);
   btn.disabled = true; btn.textContent = 'Sending…';
   const { error } = await supabase.from('enquiries').insert({ name: v.name.trim(), phone: v.phone.trim(), email: v.email.trim() || null, interest: v.interest, preferred_time: v.preferred_time, message: v.message.trim() || null, source: 'Website form' });
-  btn.disabled = false; btn.textContent = 'Book my free trial';
+  btn.disabled = false; btn.textContent = 'Book my trial day';
   if (error) return say('err', `That didn't go through. Try again, or call us on ${SITE.phone}.`);
   form.reset(); say('ok', `Thanks, ${v.name.trim().split(' ')[0]}. A JARIN coach will call you within one working day.`);
 });

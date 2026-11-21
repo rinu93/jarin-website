@@ -17,8 +17,11 @@ Staff use the separate **jarin-dashboard** project.
 3. Deploy. Without `ANTHROPIC_API_KEY` the assistant still works in guided mode (fixed answers + call-back form).
 
 ## Edit gym details
-Everything shown on the site (timings, plans, address, equipment, services, dashboard link) is in `site-config.js`.
-The chat assistant reads the same file, plus live offers from the database.
+- **Owner and Manager, no code:** Employee Dashboard → **Website content** (plans, fees, benefits, extra services,
+  opening hours, hero facts, terms), **Offers** (seasonal, student, special and referral offers with prices), and
+  **Themes & visuals** (workout themes, logo animations). Changes appear on the website and in the chat within seconds.
+- **In code:** address, contact, training styles, equipment and member-app features are in `site-config.js`.
+  Logo animations live in `public/media/` (720px MP4 + poster JPG).
 
 ## Where enquiries go
 Free-trial form and chat leads are saved to the `enquiries` table with source *Website form* or *Chatbot*

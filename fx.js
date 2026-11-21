@@ -64,6 +64,7 @@ export function scrollFx() {
 export function pointerFx() {
   if (reduced || !fine) return;
   document.querySelectorAll('.eq, .plan').forEach(card => {
+    if (card.dataset.fx) return; card.dataset.fx = '1';
     card.addEventListener('pointermove', e => {
       const r = card.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
       card.style.transform = `perspective(900px) rotateX(${(-py * 5).toFixed(2)}deg) rotateY(${(px * 6).toFixed(2)}deg) translateY(-4px)`;
@@ -72,6 +73,7 @@ export function pointerFx() {
     card.addEventListener('pointerleave', () => { card.style.transform = ''; });
   });
   document.querySelectorAll('.btn-cu').forEach(b => {
+    if (b.dataset.fx) return; b.dataset.fx = '1';
     b.addEventListener('pointermove', e => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${((e.clientX - r.left) / r.width - 0.5) * 8}px,${((e.clientY - r.top) / r.height - 0.5) * 6}px)`; });
     b.addEventListener('pointerleave', () => { b.style.transform = ''; });
   });

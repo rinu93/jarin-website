@@ -9,7 +9,7 @@ export const SITE = {
   // Address of the Employee Dashboard site (used by the "Employee" button). Updated after deployment.
   dashboardUrl: 'https://jarin-dashboard.vercel.app',
   tagline: 'Glow up. Lift up. Level up.',
-  intro: 'A 2,000 sq ft, fully air-conditioned digital gym in Thuckalay. Certified coaches, commercial equipment, and a member app that tracks every visit and every kilo.',
+  intro: 'Thuckalay’s digital gym. Train with expert coaches, then watch every visit and every kilo add up in your member app.',
 
   // ---------- Contact ----------
   phone: '+91 95000 77641',                       // ✏️ shown on the site and used for "Call us"
@@ -23,37 +23,19 @@ export const SITE = {
   landmark: 'Behind Vasanth & Co',                    // ✏️ e.g. 'Opposite City Mall'
   parking: 'Free parking for bikes and cars',     // ✏️
 
-  // ---------- Opening hours (24-hour clock "HH:MM"; [] = closed) ----------
-  // Each day can have one or more sessions.
-  hours: {
-    Monday:    [['05:30', '22:00']],
-    Tuesday:   [['05:30', '22:00']],
-    Wednesday: [['05:30', '22:00']],
-    Thursday:  [['05:30', '22:00']],
-    Friday:    [['05:30', '22:00']],
-    Saturday:  [['06:00', '21:00']],
-    Sunday:    [['07:00', '12:00']],
-  },                                              // ✏️
-  hoursNote: 'Ladies-only batch: Mon–Sat, 10:00 – 12:00',  // ✏️ leave '' to hide
-
-  // ---------- Quick facts under the hero ----------
-  stats: [
-    { value: '2,000', unit: 'sq ft', label: 'Air-conditioned floor' },
-    { value: '100%', unit: '', label: 'Digital: app, check-ins, tracking' },
-    { value: '6', unit: '', label: 'Certified coaches' },            // ✏️
-    { value: '7', unit: 'days', label: 'Open every week' },
-  ],
+  // ---------- Opening hours ----------
+  // Set in the Employee Dashboard → Website content (these are only the defaults).
+  hours: Object.fromEntries(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => [d, [['06:00', '22:30']]])),
+  hoursNote: '',
 
   // ---------- Services (icon: strength, cardio, hiit, pt, nutrition, functional, yoga, boxing, transformation, ladies) ----------
+  // Training styles only: prices, personal training, diet and physio are managed as Website content.
   services: [
-    { icon: 'strength',       title: 'Strength Training',   text: 'Power racks, platforms and a full dumbbell range up to 50 kg. Learn to lift with perfect form.' },
-    { icon: 'pt',             title: 'Personal Training',   text: 'One-to-one coaching with a plan built around your body, schedule and goal.' },
-    { icon: 'cardio',         title: 'Cardio Zone',         text: 'Treadmills, bikes, cross-trainers and rowers with a view to keep you moving.' },
-    { icon: 'hiit',           title: 'HIIT & Group Classes', text: 'High-energy circuits that torch calories and build stamina, coached in small groups.' },
-    { icon: 'functional',     title: 'Functional Training', text: 'Turf, sleds, battle ropes and kettlebells for real-world strength and agility.' },
-    { icon: 'nutrition',      title: 'Diet & Nutrition',    text: 'Simple, Indian-friendly meal guidance that fits your goal and your kitchen.' },
+    { icon: 'strength',       title: 'Strength Training',   text: 'Power racks, platforms and a full dumbbell range. Learn to lift with perfect form.' },
+    { icon: 'cardio',         title: 'Cardio Zone',         text: 'Treadmills, bikes, cross-trainers and rowers to build your engine.' },
+    { icon: 'hiit',           title: 'HIIT & Group Circuits', text: 'High-energy circuits that torch calories and build stamina, coached in small groups.' },
+    { icon: 'functional',     title: 'Functional Training', text: 'Sleds, battle ropes and kettlebells for real-world strength and agility.' },
     { icon: 'transformation', title: 'Body Transformation', text: '12-week programmes with check-ins, measurements and progress tracking.' },
-    { icon: 'ladies',         title: 'Ladies Batch',        text: 'Dedicated hours with women coaches for a comfortable, focused workout.' },
   ],                                              // ✏️ remove or edit any service
 
   // ---------- Equipment zones (art: treadmill, rack, dumbbells, kettlebell, bike, cable) ----------
@@ -64,19 +46,8 @@ export const SITE = {
     { art: 'kettlebell', title: 'Functional Area',    items: ['Training track & sled', 'Bench, Kettlebells & medicine balls', 'Battle ropes', 'TRX & plyo boxes'] },
   ],                                              // ✏️
 
-  // ---------- Membership plans (shown on the website) ----------
-  plans: [
-    { name: 'Monthly',     price: 1700,  period: '/month',    perks: ['Full gym access', 'Locker & shower', 'Fitness assessment'] },
-    { name: 'Quarterly',   price: 4199,  period: '/3 months', perks: ['Everything in Monthly', 'Diet consultation', 'Progress check every month'], popular: true },
-    { name: 'Half-yearly', price: 7699,  period: '/6 months', perks: ['Everything in Quarterly', '2 personal training sessions', 'Freeze up to 15 days'] },
-    { name: 'Annual',      price: 14999, period: '/year',     perks: ['Everything in Half-yearly', '4 personal training sessions', 'Freeze up to 30 days'] },
-  ],                                              // ✏️ prices in rupees
   currency: '₹',
-  plansNote: 'Personal training packages are priced separately. Ask at the front desk or register.',
-
-  // ---------- Registration & offers ----------
-  registrationFee: 500,                           // one-time fee for new members (₹)
-  offersNote: 'Family, couple, student and corporate plans available. Message or call us for the best deal on your plan.',  // ✏️
+  // Plans, fees, benefits, extra services and terms are edited in the Employee Dashboard → Website content.
 
   // ---------- Why JARIN: the digital gym (icon: app, qr, chart, bell, gift, calendar) ----------
   digital: [
@@ -85,20 +56,8 @@ export const SITE = {
     { icon: 'chart',    title: 'Progress you can see',     text: 'Weight and BMI tracked at every check-up, plotted as a progress line in your portal.' },
     { icon: 'bell',     title: 'Smart reminders',          text: 'WhatsApp reminders before your renewal, so your streak never breaks.' },
     { icon: 'gift',     title: 'Personal offers',          text: 'Your coach can send renewal offers made just for you, straight to your portal.' },
-    { icon: 'calendar', title: 'Book online',              text: 'Free trials and enquiries booked online in seconds. We call you back.' },
   ],
 
-  // ---------- Perks (icon: snow, locker, water, music, car, shield, ladies, coach) ----------
-  perks: [
-    { icon: 'snow',   text: 'Fully air-conditioned' },
-    { icon: 'coach',  text: 'Certified coaches every shift' },
-    { icon: 'locker', text: 'Lockers & changing rooms' },     // ✏️
-    { icon: 'water',  text: 'RO drinking water' },            // ✏️
-    { icon: 'music',  text: 'Music & workout screens' },      // ✏️
-    { icon: 'shield', text: 'Sanitised daily' },
-    { icon: 'ladies', text: 'Ladies-only batch' },
-    { icon: 'car',    text: 'Free parking' },                 // ✏️
-  ],
 };
 
 // WhatsApp needs digits only (country code + number)

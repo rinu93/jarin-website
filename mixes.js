@@ -9,6 +9,9 @@ export const MOTIONS = {
   flow: 'Flow: slow ribbons, calm and steady',
   grid: 'Grid: neon floor racing towards you',
   aurora: 'Aurora: soft curtains of light',
+  bolt: 'Bolt: fast streaks for interval training',
+  breath: 'Breath: a slow bloom that breathes with you',
+  aura: 'Aura: a rising power aura with sparks',
 };
 export const DAYPARTS = { any: 'Any time', morning: 'Morning (5 – 11 AM)', midday: 'Midday (11 AM – 4 PM)', evening: 'Evening (4 – 9 PM)', night: 'Night (9 PM – 5 AM)' };
 
@@ -19,11 +22,15 @@ export const DEFAULT_MIXES = [
   { id: 'zen-stretch', name: 'Zen Stretch', tagline: 'Mobility, breath and recovery.', a: '#7FE0C8', b: '#2F8F7E', c: '#8FD3FF', motion: 'flow', bpm: 72, daypart: 'midday' },
   { id: 'iron-steel', name: 'Iron & Steel', tagline: 'Cold steel, clean form.', a: '#9CC4FF', b: '#4A6FA5', c: '#D6E6FF', motion: 'pulse', bpm: 120, daypart: 'midday' },
   { id: 'night-grind', name: 'Night Grind', tagline: 'After hours. Neon on the floor.', a: '#B9A0FF', b: '#6A4FD8', c: '#FF6BD6', motion: 'grid', bpm: 128, daypart: 'night' },
+  { id: 'hiit-blast', name: 'HIIT Blast', tagline: 'Forty seconds on, twenty off. Go.', a: '#D4FF4F', b: '#6E8F00', c: '#FFE14D', motion: 'bolt', bpm: 175, daypart: 'morning' },
+  { id: 'yoga-flow', name: 'Yoga Flow', tagline: 'Breathe in, lengthen, breathe out.', a: '#F3B6D8', b: '#8E5BA8', c: '#9EE6D8', motion: 'breath', bpm: 56, daypart: 'morning' },
+  { id: 'silver-aura', name: 'Silver Aura', tagline: 'Calm mind. Instinct takes over.', a: '#CFE3FF', b: '#6F86B8', c: '#F2F6FF', motion: 'aura', bpm: 96, daypart: 'night' },
+  { id: 'golden-surge', name: 'Golden Surge', tagline: 'Power up past your limit.', a: '#FFD54A', b: '#C7861A', c: '#FFF1A8', motion: 'aura', bpm: 150, daypart: 'evening' },
 ];
-export const DEFAULT_CONFIG = { mode: 'rotate', intervalSec: 40, pinned: null, visitorControls: true };
+export const DEFAULT_CONFIG = { mode: 'rotate', intervalSec: 40, pinned: null, visitorControls: true, dashboardMode: 'follow', dashboardTheme: null };
 
 export const fromRow = r => ({ id: r.id, name: r.name, tagline: r.tagline || '', a: r.color_a, b: r.color_b, c: r.color_c, motion: MOTIONS[r.motion] ? r.motion : 'ember', bpm: Math.min(200, Math.max(50, Number(r.bpm) || 120)), daypart: r.daypart || 'any', enabled: r.enabled !== false, sort: r.sort ?? 0, builtin: !!r.builtin });
-export const configFromRow = r => r ? { mode: r.mode, intervalSec: Number(r.interval_sec) || 40, pinned: r.pinned || null, visitorControls: r.visitor_controls !== false } : { ...DEFAULT_CONFIG };
+export const configFromRow = r => r ? { mode: r.mode, intervalSec: Number(r.interval_sec) || 40, pinned: r.pinned || null, visitorControls: r.visitor_controls !== false, dashboardMode: r.dashboard_mode || 'follow', dashboardTheme: r.dashboard_theme || null } : { ...DEFAULT_CONFIG };
 
 /* ---------------- colour helpers ---------------- */
 const hex = h => { const n = parseInt(String(h).replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
@@ -61,6 +68,8 @@ export function createStage(canvas, opts = {}) {
   let cur = null, prev = null, fadeStart = 0;
   const FADE = 1800;
   const sparks = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random(), s: 0.4 + Math.random() * 1.6, v: 0.3 + Math.random() * 0.9, w: Math.random() * Math.PI * 2 }));
+  const streaks = Array.from({ length: 34 }, () => ({ p: Math.random(), o: Math.random() * 1.6 - 0.3, l: 0.12 + Math.random() * 0.28, v: 0.6 + Math.random() * 0.9, w: 1 + Math.random() * 2.5 }));
+  const flames = Array.from({ length: 26 }, (_, i) => ({ a: (i / 26) * Math.PI * 2, h: 0.45 + Math.random() * 0.55, ph: Math.random() * 6, w: 0.5 + Math.random() }));
 
   function size() {
     const r = canvas.getBoundingClientRect();
@@ -140,6 +149,60 @@ export function createStage(canvas, opts = {}) {
         for (let y = 0; y <= H * 0.8; y += 20 * dpr) ctx.lineTo(x0 + Math.sin(y / H * 6 + t * 0.6 + j) * W * 0.04, y);
         for (let y = H * 0.8; y >= 0; y -= 20 * dpr) ctx.lineTo(x0 + W * 0.08 + Math.sin(y / H * 6 + t * 0.6 + j + 0.8) * W * 0.04, y);
         ctx.closePath(); ctx.fill();
+      }
+    } else if (m.motion === 'bolt') {
+      // speed streaks racing diagonally; brightness rides the beat smoothly (no flashing)
+      const ang = -0.42, ca = Math.cos(ang), sa = Math.sin(ang), D = Math.hypot(W, H);
+      ctx.lineCap = 'round';
+      for (const s of streaks) {
+        const pos = ((s.p + t * s.v * m.bpm / 240) % 1.4) - 0.2;
+        const cx = W * pos, cy = H * s.o;
+        const len = D * s.l;
+        const g = ctx.createLinearGradient(cx, cy, cx - ca * len, cy - sa * len);
+        g.addColorStop(0, rgba(s.w > 2 ? c : a, (0.35 + 0.25 * b) * k)); g.addColorStop(1, rgba(a, 0));
+        ctx.strokeStyle = g; ctx.lineWidth = s.w * dpr;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - ca * len, cy - sa * len); ctx.stroke();
+      }
+      const gl = ctx.createRadialGradient(W * 0.8, H * 0.3, 0, W * 0.8, H * 0.3, Math.max(W, H) * 0.5);
+      gl.addColorStop(0, rgba(c, 0.12 * k * (0.6 + 0.4 * b))); gl.addColorStop(1, rgba(c, 0));
+      ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    } else if (m.motion === 'breath') {
+      // one breath every four beats: bloom in, bloom out
+      const br = 0.5 - 0.5 * Math.cos(Math.PI * 2 * t * m.bpm / 240);
+      const cx = W * 0.72, cy = H * 0.45, R = Math.min(W, H) * (0.16 + 0.1 * br);
+      for (let i = 0; i < 6; i++) {
+        const an = i / 6 * Math.PI * 2 + t * 0.05;
+        const px = cx + Math.cos(an) * R * 0.55, py = cy + Math.sin(an) * R * 0.55;
+        const g = ctx.createRadialGradient(px, py, 0, px, py, R);
+        g.addColorStop(0, rgba(i % 2 ? a : c, 0.1 * k)); g.addColorStop(1, rgba(i % 2 ? a : c, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, R, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.lineWidth = 1.2 * dpr;
+      for (let i = 1; i <= 3; i++) { ctx.strokeStyle = rgba(c, (0.16 - i * 0.03) * k); ctx.beginPath(); ctx.arc(cx, cy, R * (1 + i * 0.35 + br * 0.2), 0, Math.PI * 2); ctx.stroke(); }
+    } else if (m.motion === 'aura') {
+      // a rising aura around a calm centre, with sparks drifting up
+      const cx = W * 0.74, cy = H * 0.6, base = Math.min(W, H) * 0.16;
+      const surge = 0.85 + 0.15 * b;
+      for (const f of flames) {
+        const sway = Math.sin(t * 2.2 + f.ph) * 0.18;
+        const x0 = cx + Math.cos(f.a) * base * 0.9, y0 = cy + Math.sin(f.a) * base * 0.5;
+        const hgt = base * (2.2 + 1.6 * f.h) * surge * (0.8 + 0.2 * Math.sin(t * 3 + f.ph));
+        const g = ctx.createLinearGradient(x0, y0, x0, y0 - hgt);
+        g.addColorStop(0, rgba(a, 0.22 * k)); g.addColorStop(0.6, rgba(c, 0.12 * k)); g.addColorStop(1, rgba(c, 0));
+        ctx.fillStyle = g; ctx.beginPath();
+        ctx.moveTo(x0 - base * 0.12 * f.w, y0);
+        ctx.quadraticCurveTo(x0 + Math.cos(f.a) * base * 0.4 + sway * base, y0 - hgt * 0.55, x0 + sway * base * 1.6, y0 - hgt);
+        ctx.quadraticCurveTo(x0 + Math.cos(f.a) * base * 0.2 + sway * base, y0 - hgt * 0.45, x0 + base * 0.12 * f.w, y0);
+        ctx.closePath(); ctx.fill();
+      }
+      const core = ctx.createRadialGradient(cx, cy - base * 0.6, 0, cx, cy - base * 0.6, base * 2.4);
+      core.addColorStop(0, rgba(c, 0.2 * k * surge)); core.addColorStop(1, rgba(a, 0));
+      ctx.fillStyle = core; ctx.fillRect(0, 0, W, H);
+      for (const p of sparks.slice(0, 40)) {
+        const y = 1 - ((p.y + t * p.v * (m.bpm / 700)) % 1);
+        const x = cx / W + (p.x - 0.5) * 0.45 + Math.sin(t + p.w) * 0.01;
+        ctx.fillStyle = rgba(c, (0.25 + 0.5 * (1 - y)) * k * 0.7);
+        ctx.beginPath(); ctx.arc(x * W, y * H, p.s * dpr, 0, Math.PI * 2); ctx.fill();
       }
     }
     ctx.restore();

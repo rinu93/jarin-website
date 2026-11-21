@@ -10,8 +10,8 @@ import { supabase, configured } from './supabase.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => '₹' + Number(n).toLocaleString('en-IN');
 const KEY = 'jarin-chat-v1';
-const GREETING = `Hi, I'm the JARIN assistant. Ask me about timings, plans and fees, or book a free trial. I can also take your number for a call back.`;
-const CHIPS = ['Timings', 'Plans & fees', 'Where are you?', 'Book a free trial', 'Talk to a coach'];
+const GREETING = `Hi, I'm the JARIN assistant. Ask me about timings, plans, fees and offers, or book a trial day. I can also take your number for a call back.`;
+const CHIPS = ['Timings', 'Plans & fees', 'Offers', 'Where are you?', 'Book a trial day'];
 
 let state = { open: false, mode: 'ai', messages: [], lead: null, busy: false, saved: false };
 try { const s = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (s && Array.isArray(s.messages)) state = { ...state, ...s, open: false, busy: false }; } catch { /* private mode */ }
@@ -22,15 +22,26 @@ function hoursText() {
   return DAYS.map(d => `${d.slice(0, 3)}: ${(SITE.hours[d] || []).length ? SITE.hours[d].map(([a, b]) => `${fmtTime(a)}–${fmtTime(b)}`).join(', ') : 'Closed'}`).join('\n') + `\n${openStatus().label}.` + (SITE.hoursNote ? `\n${SITE.hoursNote}` : '');
 }
 function plansText() {
-  return SITE.plans.map(p => `${p.name}: ${money(p.price)} ${p.period}`).join('\n') + (SITE.registrationFee ? `\nOne-time registration: ${money(SITE.registrationFee)} for new members.` : '') + `\nWant the best deal? I can have the team call you with current offers.`;
+  const c = SITE.content || {}; const f = c.fees || {};
+  return SITE.plans.map(p => `${p.name}: ${money(p.price)} ${p.period}`).join('\n') + (SITE.registrationFee ? `\nOne-time registration: ${money(SITE.registrationFee)} on every plan.` : '')
+    + ((c.plans || []).some(p => p.cult && p.enabled !== false) ? `\nThe Cult app comes with ${(c.plans || []).filter(p => p.cult).map(p => p.name).join(' / ')} plans.` : '')
+    + (f.ptMonthly ? `\nPersonal trainer: ${money(f.ptMonthly)} a month, on any plan.` : '') + `\nAsk me about offers to see current discounts.`;
+}
+function offersText() {
+  const list = (SITE.offers || []);
+  if (!list.length) return 'No special offers are live right now. I can have the team call you with the best price.';
+  return list.slice(0, 6).map(o => `• ${o.title}${o.tag ? ` (${o.tag})` : ''}${o.highlight ? `, ${o.highlight}` : ''}`).join('\n') + '\nOffers cannot be combined. Want a coach to call you about one?';
 }
 const ANSWERS = [
   { k: /(time|timing|hour|open|close|when)/i, a: () => hoursText() },
   { k: /(plan|fee|price|cost|charge|month|annual|quarter|rate|registration|kitna|evlo|ethra)/i, a: () => plansText() },
   { k: /(where|address|location|map|direction|reach|parking)/i, a: () => `${SITE.addressLines.join(', ')}${SITE.landmark ? ` (${SITE.landmark})` : ''}.\n${SITE.parking || ''}\nDirections: https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(SITE.mapQuery)}` },
   { k: /(\bac\b|air[- ]?con|cool|condition)/i, a: () => `Yes, the whole 2,000 sq ft floor is air-conditioned.` },
-  { k: /(ladies|women|female|girl)/i, a: () => SITE.hoursNote || 'Yes, we have dedicated hours for women. Ask the team for timings.' },
-  { k: /(trainer|coach|personal|pt\b)/i, a: () => `We have certified coaches on every shift. Personal training is priced separately; I can have a coach call you.` },
+  { k: /(offer|discount|deal|student|college|school|referral|refer|new year|pre-?opening)/i, a: () => offersText() },
+  { k: /(ladies|women|female|girl)/i, a: () => 'Yes, we have a female trainer on the floor, and you can book her as your personal trainer.' },
+  { k: /(trial|day pass|try)/i, a: () => { const f = (SITE.content || {}).fees || {}; return `A one-day trial pass is ${f.trialPass ? money(f.trialPass) : 'free'}. Say "call me" and a coach will fix a day with you.`; } },
+  { k: /(diet|supplement|physio|injury|stall|shake|towel|locker)/i, a: () => { const c = SITE.content || {}; return (c.services || []).map(s => `${s.title}: ${s.items.map(([n, p]) => `${n} ${money(p)}`).join(', ')}`).join('\n') + (c.fees && c.fees.locker ? `\nPersonal locker: ${money(c.fees.locker)} a month.` : ''); } },
+  { k: /(trainer|coach|personal|pt\b)/i, a: () => { const f = (SITE.content || {}).fees || {}; return `Our trainers guide you on the floor. A personal trainer is ${f.ptMonthly ? money(f.ptMonthly) + ' a month' : 'available'} on any plan, with a female trainer available.`; } },
   { k: /(equipment|machine|treadmill|weight|dumbbell|cardio)/i, a: () => SITE.equipment.map(e => `${e.title}: ${e.items.slice(0, 3).join(', ')}`).join('\n') },
   { k: /(service|class|hiit|yoga|diet|nutrition|program)/i, a: () => SITE.services.map(s => `• ${s.title}`).join('\n') },
   { k: /(app|portal|digital|track|progress)/i, a: () => `Members get their own portal with a digital card, visit history, weight and BMI progress, and personal renewal offers.` },
@@ -97,7 +108,7 @@ async function send(text) {
 /* ---------------- guided mode: answers + enquiry capture ---------------- */
 function leadChips() {
   if (!state.lead) return [];
-  if (state.lead.step === 'interest') return ['Free trial', 'Weight loss', 'Muscle gain', 'Personal training', 'Membership plans'];
+  if (state.lead.step === 'interest') return ['Trial day', 'Annual plan', 'Weight loss', 'Personal trainer', 'Student offer'];
   if (state.lead.step === 'time') return ['Morning', 'Midday', 'Evening', 'Weekend'];
   if (state.lead.step === 'confirm') return ['Yes, send it', 'Change details'];
   return [];
@@ -123,7 +134,7 @@ async function guided(text) {
       state.lead = { step: 'name', reason: L.reason }; say("Let's fix it. What's your name?"); return;
     }
   }
-  if (/^(book a free trial|talk to a coach)$/i.test(text) || wantsLead(text)) { startLead(text); return; }
+  if (/^(book a trial day|book a free trial|talk to a coach)$/i.test(text) || wantsLead(text)) { startLead(text); return; }
   const hit = ANSWERS.find(x => x.k.test(text));
   if (hit) { say(hit.a() + `\n\nWant a coach to call you? Just say "call me".`); return; }
   if (/^(hi|hello|hey|vanakkam|namaskaram)/i.test(text)) { say(`Hello! What would you like to know? Timings, plans, location, or a free trial?`); return; }

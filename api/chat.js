@@ -9,7 +9,8 @@
 //   VITE_SUPABASE_URL        same values the website already uses
 //   VITE_SUPABASE_ANON_KEY
 import Anthropic from '@anthropic-ai/sdk';
-import { SITE, DAYS, fmtTime, waNumber } from '../site-config.js';
+import { SITE, waNumber } from '../site-config.js';
+import { contentFromRows, describeContent, money as rupees } from '../content.js';
 
 const MODEL = process.env.CHAT_MODEL || 'claude-opus-5-5';
 // Server-side refusal fallback is available on these models; others run without it.
@@ -20,24 +21,16 @@ const LIMITS = { messages: 30, charsPerMessage: 1500, totalChars: 14000, toolRou
 /* ---------------- knowledge ---------------- */
 const money = n => '₹' + Number(n).toLocaleString('en-IN');
 function gymFacts() {
-  const hours = DAYS.map(d => `${d}: ${(SITE.hours[d] || []).length ? SITE.hours[d].map(([a, b]) => `${fmtTime(a)}–${fmtTime(b)}`).join(', ') : 'Closed'}`).join('\n');
-  const plans = SITE.plans.map(p => `- ${p.name}: ${money(p.price)} ${p.period} (${p.perks.join('; ')})`).join('\n');
+  // Stable details only. Prices, plans, hours and offers come from the dashboard (LIVE DETAILS).
   return [
     `Gym: ${SITE.name}. Tagline: ${SITE.tagline}`,
     `About: ${SITE.intro}`,
     `Address: ${SITE.addressLines.join(', ')}. Landmark: ${SITE.landmark || '—'}. Parking: ${SITE.parking || '—'}.`,
     `Phone: ${SITE.phone}. WhatsApp: +${waNumber()}. Email: ${SITE.email}.${SITE.instagram ? ` Instagram: @${SITE.instagram}.` : ''}`,
-    `Opening hours:\n${hours}${SITE.hoursNote ? `\nNote: ${SITE.hoursNote}` : ''}`,
-    `Membership plans:\n${plans}`,
-    `One-time registration fee for new members: ${money(SITE.registrationFee || 0)}.`,
-    SITE.plansNote ? `Note: ${SITE.plansNote}` : '',
-    SITE.offersNote ? `More offers: ${SITE.offersNote}` : '',
-    `Services:\n${SITE.services.map(s => `- ${s.title}: ${s.text}`).join('\n')}`,
+    `Training styles:\n${SITE.services.map(s => `- ${s.title}: ${s.text}`).join('\n')}`,
     `Equipment:\n${SITE.equipment.map(e => `- ${e.title}: ${e.items.join(', ')}`).join('\n')}`,
-    `Digital features:\n${(SITE.digital || []).map(d => `- ${d.title}: ${d.text}`).join('\n')}`,
-    `Perks: ${(SITE.perks || []).map(p => p.text).join(', ')}.`,
-    `Quick facts: ${SITE.stats.map(s => `${s.value}${s.unit ? ' ' + s.unit : ''} ${s.label}`).join('; ')}.`,
-    `Free trial: first session free — a guided tour, a body composition check and a workout with a certified coach; no obligation to join.`,
+    `Member portal features:\n${(SITE.digital || []).map(d => `- ${d.title}: ${d.text}`).join('\n')}`,
+    `Trial day: a tour, a body composition check and a guided workout with a trainer; no obligation to join. The price is in LIVE DETAILS.`,
   ].filter(Boolean).join('\n\n');
 }
 
@@ -45,7 +38,7 @@ function gymFacts() {
 const SYSTEM = `You are the JARIN Assistant, the chat helper on the website of ${SITE.name}, a gym.
 
 How to answer:
-- Answer only from the GYM FACTS and LIVE OFFERS below. Never invent prices, discounts, timings, services or staff names. If something isn't covered, say so plainly and offer to have the team call back.
+- Answer only from the GYM FACTS, LIVE DETAILS and LIVE OFFERS below. Never invent prices, discounts, timings, services or staff names. If something isn't covered, say so plainly and offer to have the team call back.
 - Keep replies short: 1–3 sentences, or a few short lines for lists like timings or plans. Friendly and direct, like a helpful front-desk person.
 - Prices are in rupees (₹). Mention the one-time registration fee when someone asks about joining costs.
 - Reply in the visitor's language when they write in Tamil, Malayalam or Hindi; otherwise English.
@@ -53,7 +46,7 @@ How to answer:
 - Never ask for payment details, passwords or ID numbers.
 
 Collecting an enquiry:
-- When the visitor wants a free trial, wants to join, asks for a call back, or asks something you can't answer, offer to take their details.
+- When the visitor wants a trial day, wants to join, asks for a call back, or asks something you can't answer, offer to take their details.
 - You need their name and a phone number (at least 8 digits). Also ask what they're interested in and the best time to visit, but don't insist.
 - Read the details back in one line and ask them to confirm. Only after they confirm, call submit_enquiry once.
 - After it's saved, tell them a JARIN coach will call within one working day, and mention they can also WhatsApp +${waNumber()}.
@@ -80,22 +73,28 @@ const TOOLS = [{
   },
 }];
 
-/* ---------------- live offers (cached 5 minutes) ---------------- */
-let offersCache = { at: 0, text: '' };
+/* ---------------- live details and offers (cached 5 minutes) ---------------- */
+let liveCache = { at: 0, text: '' };
 async function liveOffers(fetchImpl) {
-  if (Date.now() - offersCache.at < 300000) return offersCache.text;
-  let text = 'No special offers are live right now.';
+  if (Date.now() - liveCache.at < 300000) return liveCache.text;
+  let content = contentFromRows([]); let offers = 'No special offers are live right now.';
   try {
     const url = process.env.VITE_SUPABASE_URL, key = process.env.VITE_SUPABASE_ANON_KEY;
     if (url && key) {
-      const r = await fetchImpl(`${url}/rest/v1/offers?select=title,details,tag,valid_until&order=created_at.desc&limit=6`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-      if (r.ok) {
-        const rows = await r.json();
-        if (rows.length) text = rows.map(o => `- ${o.title}${o.tag ? ` (${o.tag})` : ''}${o.details ? `: ${o.details}` : ''}${o.valid_until ? `, valid till ${o.valid_until}` : ''}`).join('\n');
+      const h = { headers: { apikey: key, Authorization: `Bearer ${key}` } };
+      const [rc, ro] = await Promise.all([
+        fetchImpl(`${url}/rest/v1/site_content?select=key,value`, h),
+        fetchImpl(`${url}/rest/v1/offers?select=title,details,tag,valid_until,starts_on,kind,highlight,price_rows&order=sort.asc&limit=12`, h),
+      ]);
+      if (rc.ok) content = contentFromRows(await rc.json());
+      if (ro.ok) {
+        const rows = await ro.json();
+        if (rows.length) offers = rows.map(o => `- [${o.kind || 'seasonal'}] ${o.title}${o.tag ? ` (${o.tag})` : ''}${o.highlight ? `, ${o.highlight}` : ''}${o.details ? `: ${o.details}` : ''}${Array.isArray(o.price_rows) && o.price_rows.length ? ` Prices: ${o.price_rows.map(r => `${r.label} ${r.was ? rupees(r.was) + ' → ' : ''}${rupees(r.now)}`).join('; ')}.` : ''}${o.starts_on ? ` Starts ${o.starts_on}.` : ''}${o.valid_until ? ` Valid till ${o.valid_until}.` : ''}`).join('\n');
       }
     }
-  } catch { /* offers are optional */ }
-  offersCache = { at: Date.now(), text };
+  } catch { /* fall back to the built-in details */ }
+  const text = `LIVE DETAILS\n${describeContent(content)}\n\nLIVE OFFERS\n${offers}`;
+  liveCache = { at: Date.now(), text };
   return text;
 }
 
@@ -160,7 +159,7 @@ export function createHandler({ client, fetchImpl = fetch } = {}) {
           output_config: { effort: 'low' },
           system: [
             { type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } },
-            { type: 'text', text: `LIVE OFFERS\n${offers}` },
+            { type: 'text', text: offers },
           ],
           tools: TOOLS,
           tool_choice: { type: 'auto' },
